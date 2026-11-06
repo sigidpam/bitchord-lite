@@ -1,7 +1,11 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod bridge;
 
 fn main() {
     tauri::Builder::default()
+        .setup(|_app| {
+            bridge::spawn();
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running BitChord Lite");
 }

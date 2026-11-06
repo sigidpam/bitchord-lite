@@ -10,4 +10,8 @@ export const config = {
   androidAppUrl: import.meta.env.VITE_ANDROID_APP_URL || 'https://github.com/kushagrasinghx/BitChord/releases/latest',
   /** BitChord's Listen Together server. vite.config.ts refuses a production build without it. */
   partyServerUrl: import.meta.env.VITE_PARTY_SERVER_URL ?? '',
+  /** The Tauri shell sets this; the browser build leaves it unset and uses the extension. */
+  native: import.meta.env.VITE_BITCHORD_NATIVE === '1',
+  /** The bundled Rust bridge's local HTTP address (src-tauri/src/bridge.rs). */
+  nativeBridgeUrl: import.meta.env.VITE_BITCHORD_BRIDGE_URL || 'http://127.0.0.1:47823',
 } as const;

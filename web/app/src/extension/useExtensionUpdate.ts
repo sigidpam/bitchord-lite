@@ -31,6 +31,8 @@ export function compareVersions(a: string, b: string): number {
 }
 
 async function fetchPublished(): Promise<PublishedExtension | null> {
+  // The desktop build has no extension packages to update.
+  if (config.native) return null;
   const response = await fetch(config.extensionManifestUrl, { cache: 'no-store' });
   if (!response.ok) return null;
   const body = (await response.json()) as Partial<PublishedExtension>;

@@ -2,6 +2,7 @@ import { detectExtension, type DetectedExtension } from '@bitchord/shared/bridge
 import { useQuery } from '@tanstack/react-query';
 import { config } from '@/config';
 import { queryClient } from '@/lib/queryClient';
+import { detectNativeBridge } from './native';
 
 export type ExtensionStatus =
   | { state: 'checking' }
@@ -25,6 +26,8 @@ const SLOW_RECHECK_MS = 5000;
  * its own when the worker is back; a removed extension fails each call instead.
  */
 async function detect(): Promise<DetectedExtension | null> {
+  // The desktop build has no extension to find: the bridge is in the app.
+  if (config.native) return detectNativeBridge();
   const known = queryClient.getQueryData<DetectedExtension | null>(extensionQueryKey) ?? null;
   const found = await detectExtension({ chromiumExtensionId: config.chromiumExtensionId });
   if (found || !known) return found;

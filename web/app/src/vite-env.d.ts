@@ -7,6 +7,9 @@ interface ImportMetaEnv {
   readonly VITE_EXTENSION_FIREFOX_URL?: string;
   readonly VITE_EXTENSION_MANIFEST_URL?: string;
   readonly VITE_PARTY_SERVER_URL?: string;
+  /** `1` in the Tauri shell: talk to the local Rust bridge instead of the extension. */
+  readonly VITE_BITCHORD_NATIVE?: string;
+  readonly VITE_BITCHORD_BRIDGE_URL?: string;
 }
 
 interface ImportMeta {

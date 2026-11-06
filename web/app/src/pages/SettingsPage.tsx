@@ -1,4 +1,4 @@
-import { ChevronRight, Users } from 'lucide-react';
+import { Bug, ChevronRight, Users } from 'lucide-react';
 import { lazy, Suspense, useState, type ComponentType, type ReactNode } from 'react';
 import { MdOutlineExtension } from 'react-icons/md';
 import { SiApplemusic, SiDiscord, SiSpotify, SiYoutubemusic } from 'react-icons/si';
@@ -9,6 +9,7 @@ import { useExtension } from '@/extension/useExtension';
 import { useYtAuth } from '@/extension/useYtAuth';
 import { useParty } from '@/party/useParty';
 import { useHistorySettings } from '@/playback/historyReporting';
+import { config } from '@/config';
 import { Select } from '@/components/Select';
 import { AUTOMIX_BARS } from '@/playback/automix/choices';
 import { CROSSFADE_CHOICES, usePlayer } from '@/state/player';
@@ -88,6 +89,14 @@ export default function SettingsPage() {
             <span className={settingsUi.integrationName}>YouTube Music</span>
             <span className={settingsUi.value}>{youtubeText(yt)}</span>
           </div>
+          {config.native && (
+            <LinkRow
+              to="/debug"
+              icon={<Glyph Icon={Bug} color="#636366" />}
+              title="Debug"
+              value="Track log & open a link"
+            />
+          )}
           <div className={settingsUi.integration}>
             <Glyph Icon={SiSpotify} color="#1ed760" />
             <span className={settingsUi.integrationName}>Spotify</span>
@@ -96,37 +105,45 @@ export default function SettingsPage() {
           {present && discord.state === 'ready' && discord.discord.available && (
             <LinkRow to="/settings/discord" icon={<Glyph Icon={SiDiscord} color="#5865f2" />} title="Discord" value={discordText} />
           )}
-          <LinkRow
-            to="/extension"
-            icon={<Glyph Icon={MdOutlineExtension} color="#636366" />}
-            title="BitChord Extension"
-            value={present ? `v${extension.extension.info.version}` : 'Not installed'}
-          />
+          {!config.native && (
+            <LinkRow
+              to="/extension"
+              icon={<Glyph Icon={MdOutlineExtension} color="#636366" />}
+              title="BitChord Extension"
+              value={present ? `v${extension.extension.info.version}` : 'Not installed'}
+            />
+          )}
         </section>
-        <section className={`${settingsUi.group} mt-3 empty:hidden`}>
-          <Toggle
-            label="Share Listening Activity to YouTube"
-            detail={
-              present && !extension.extension.info.capabilities.includes('yt.stats')
-                ? 'Update the BitChord extension to share: this version can’t send plays to YouTube.'
-                : 'Songs you play here go to your YouTube Music history and shape its recommendations.'
-            }
-            checked={shareHistory}
-            onChange={setShareHistory}
-          />
-          <CanvasToggle />
-        </section>
+        {!config.native && (
+          <section className={`${settingsUi.group} mt-3 empty:hidden`}>
+            <Toggle
+              label="Share Listening Activity to YouTube"
+              detail={
+                present && !extension.extension.info.capabilities.includes('yt.stats')
+                  ? 'Update the BitChord extension to share: this version can’t send plays to YouTube.'
+                  : 'Songs you play here go to your YouTube Music history and shape its recommendations.'
+              }
+              checked={shareHistory}
+              onChange={setShareHistory}
+            />
+            <CanvasToggle />
+          </section>
+        )}
 
-        <h2 className={settingsUi.sectionHeader}>Apple Music</h2>
-        <section className={settingsUi.group}>
-          <div className={settingsUi.integration}>
-            <Glyph Icon={SiApplemusic} color="#fa2d48" />
-            <span className={settingsUi.integrationName}>Extension Access</span>
-            {present ? <AppleMusicIntegration /> : <span className={settingsUi.value}>Needs the extension</span>}
-          </div>
-          <AppleMusicToggles />
-        </section>
-        <p className={settingsUi.footer}>From Apple Music’s public pages. No Apple Music account or sign-in needed.</p>
+        {!config.native && (
+          <>
+            <h2 className={settingsUi.sectionHeader}>Apple Music</h2>
+            <section className={settingsUi.group}>
+              <div className={settingsUi.integration}>
+                <Glyph Icon={SiApplemusic} color="#fa2d48" />
+                <span className={settingsUi.integrationName}>Extension Access</span>
+                {present ? <AppleMusicIntegration /> : <span className={settingsUi.value}>Needs the extension</span>}
+              </div>
+              <AppleMusicToggles />
+            </section>
+            <p className={settingsUi.footer}>From Apple Music’s public pages. No Apple Music account or sign-in needed.</p>
+          </>
+        )}
 
         <h2 className={settingsUi.sectionHeader}>Listen Together</h2>
         <section className={settingsUi.group}>

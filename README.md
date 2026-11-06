@@ -2,12 +2,12 @@
 
 A lightweight macOS desktop player for YouTube Music, derived from [BitChord](https://github.com/kushagrasinghx/BitChord).
 
-BitChord Lite keeps the BitChord web player's UI and playback engine, wraps it in a Tauri 2 shell, and replaces the Chrome extension with a local Rust bridge. The goal is a signed, installable `.dmg` that is lighter than an Electron app and can play audio-only sources.
+BitChord Lite keeps the BitChord web player's UI and playback engine, wraps it in a Tauri 2 shell, and replaces the Chrome extension with a local Rust bridge. The goal is an installable `.dmg` that is lighter than an Electron app and can play audio-only sources.
 
 - Upstream: https://github.com/kushagrasinghx/BitChord
 - Source fork: https://github.com/sigidpam/BitChord
 - License: GPLv3
-- Status: web UI imported and Tauri scaffold present; the Rust bridge and first signed DMG are next
+- Status: **v0.1 development build.** Native YouTube Music playback (signed out) works through the bundled Rust bridge. The first unsigned DMG can be built locally. Source picker UI, local files, Spotify, and sign-in are the next stage.
 
 ## Why a native bridge
 
@@ -17,9 +17,20 @@ The Tauri app therefore uses:
 
 - **React/Vite UI** from BitChord, rendered in the Tauri WebView.
 - **Rust local bridge** for the network and auth work the extension used to do.
-- **Tauri commands / local HTTP server** for the page ↔ bridge contract.
+- **A page-side fetch proxy** that sends every YouTube/googlevideo request through the bridge, because WKWebView has no declarativeNetRequest.
 
 The extension source is kept in the repository as the reference implementation; it is not loaded by the shipping app.
+
+The bridge listens on `127.0.0.1:47823` only and exposes:
+
+| Route | Purpose |
+|---|---|
+| `GET /health` | Liveness check |
+| `POST /bridge` | The same versioned bridge envelope the extension used (`ping`, `yt.fetch`, `yt.authState`) |
+| `GET/POST/HEAD /proxy?url=…` | YouTube/googlevideo proxy: adds the Origin/Referer/X-Origin headers the extension's DNR rules added; streams media and forwards `Range` |
+| `POST /log` | Dev-only mirror of the page's track log into the terminal |
+
+The bridge only reaches `youtube.com`, `*.youtube.com`, `googlevideo.com`, and `*.googlevideo.com`; it is not a general proxy.
 
 ## Architecture
 
@@ -36,10 +47,10 @@ The extension source is kept in the repository as the reference implementation; 
 │   • InnerTube / YouTube Music requests       │
 │   • googlevideo audio proxy                  │
 │   • BotGuard / PO token forwarding           │
-│   • Spotify session bridge                   │
-│   • lyrics providers                         │
-│   • Discord IPC (later stage)                │
-│   • local file server                        │
+│   • Spotify session bridge (planned)         │
+│   • lyrics providers (planned)               │
+│   • Discord IPC (planned)                    │
+│   • local file server (planned)              │
 └──────────────────────────────────────────────┘
 ```
 
@@ -52,41 +63,32 @@ The extension source is kept in the repository as the reference implementation; 
 
 ## Sources
 
-The v0.1 source picker is designed for:
+The planned source picker covers:
 
 - YouTube Music audio
 - YouTube video audio
 - Local files
 - Spotify (embedded login/session)
 
-YouTube Music and YouTube video are the core; local files use a Tauri file picker and a local media server. Spotify uses an embedded login flow and the existing BitChord Spotify catalogue code.
+YouTube Music is working today; any YouTube video id or URL can be played from the Debug page. The picker itself, local files (Tauri file picker plus a local media route), and Spotify (embedded login/session) are the next implementation stage.
 
-## v0.1 scope
+## What works in this build
 
-- Tauri app shell with the existing BitChord UI.
-- Native bridge for YouTube Music / YouTube audio and local files.
-- Source picker.
-- Spotify session playback.
-- Signed and notarized `.dmg`.
-- Full sign-in, lyrics, downloads, Discord, Last.fm, Listen Together, and the remaining parity work are staged after v0.1.
+- Tauri 2 desktop shell with the BitChord UI.
+- Native bridge speaking the existing bridge protocol; no browser extension.
+- Anonymous YouTube Music home feed, search, browse, and autoplay radio.
+- BotGuard / WebPO token flow: the page runs BotGuard, the bridge forwards `Create`/`GenerateIT`.
+- Audio playback through proxied googlevideo streams (verified with VISIONOS direct audio in WKWebView: Opus 251, 206 range responses).
+- Any YouTube video can be played by id or URL from the Debug page (`/debug`, or `?play=<id or URL>` in the desktop dev build).
+- Unsigned `.app` / `.dmg` build.
 
-## Roadmap
-
-| Release | Scope |
-|---|---|
-| v0.1 | Tauri shell, source picker, YouTube Music/video audio, local files, Spotify session, signed DMG |
-| v0.2 | Lyrics, downloads, local library, playlists |
-| v0.3 | Google sign-in / age-restricted tracks, history, Listen Together |
-| v0.4 | Discord, Last.fm, full BitChord parity |
-
-Heavy features remain opt-in so the default profile stays light.
+Not in this build yet: in-app source picker, local files, Spotify playback, Google/YouTube sign-in and age-gated tracks, lyrics, downloads, Discord, Last.fm, and Listen Together parity.
 
 ## Repository layout
 
 ```text
 web/            React/Vite UI and playback code (GPLv3, from BitChord)
 src-tauri/      Rust Tauri shell and native bridge
-docs/           architecture and implementation notes
 LICENSE         GPLv3
 README.md
 ```
@@ -114,13 +116,22 @@ Production build:
 corepack pnpm tauri build
 ```
 
-The DMG is written under `src-tauri/target/release/bundle/dmg/`.
+The app enters native mode automatically: the Tauri config runs the web build with `VITE_BITCHORD_NATIVE=1`, so the page talks to the bundled Rust bridge instead of looking for the extension. The bridge only listens on loopback.
 
-The current scaffold loads the web UI; the native bridge is the next milestone.
+The build is **unsigned** by default. The DMG is written under `src-tauri/target/release/bundle/dmg/`; on another Mac it needs the Gatekeeper bypass described below.
+
+To build a universal (Intel + Apple Silicon) DMG:
+
+```bash
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+corepack pnpm tauri build --target universal-apple-darwin
+```
+
+The universal artifacts are written under `src-tauri/target/universal-apple-darwin/release/bundle/`.
 
 ## Signing and notarization
 
-This project targets a Developer ID Application certificate.
+Signing is optional for development; the current build is unsigned. If you have a paid Apple Developer Program membership, these are the steps for a clean, notarized DMG.
 
 1. Install the certificate in the login Keychain and verify:
 
@@ -179,7 +190,7 @@ For technical users, a cask can remove the quarantine attribute during install. 
 cask "bitchord-lite" do
   version "0.1.0"
   sha256 "REPLACE_WITH_DMG_SHA256"
-  url "https://github.com/sigidpam/bitchord-lite/releases/download/v0.1.0/BitChord-Lite_0.1.0_x64.dmg"
+  url "https://github.com/sigidpam/bitchord-lite/releases/download/v0.1.0/BitChord%20Lite_0.1.0_universal.dmg"
   name "BitChord Lite"
   desc "Lightweight YouTube Music player"
   homepage "https://github.com/sigidpam/bitchord-lite"
@@ -199,6 +210,20 @@ Apple offers fee waivers for accredited educational institutions, nonprofits, an
 The only route to a DMG that opens cleanly on any Mac without warnings is a paid Developer ID certificate plus notarization. The free routes trade that polish for a manual approval or a technical install path.
 
 
+## Troubleshooting
+
+**The app shows the extension install banner.** The local bridge did not start, so the native build is behaving like the browser build. Only one process can own `127.0.0.1:47823`. Quit any other BitChord Lite instance and relaunch:
+
+```bash
+lsof -nP -iTCP:47823 -sTCP:LISTEN
+```
+
+**A track will not play.** Open `/debug` in the running app and read the track log. The page logs every InnerTube client attempt and the streaming result. The resolver tries VISIONOS, YTMUSIC, WEB, and MWEB. In a development build, a per-client override can be set with the localStorage key `bitchord:debug:clients` (for example `YTMUSIC,WEB`).
+
+**The downloaded app is blocked by Gatekeeper.** See “Distribution without a paid Developer ID” above. The DMG is not notarized.
+
+**Sign-in.** This build is anonymous. The bridge deliberately holds no Google cookies, and the account UI is hidden in the desktop build.
+
 ## Attribution and license
 
 BitChord Lite is a derivative of **BitChord**, originally by Kushagra Singh and contributors:
@@ -212,4 +237,4 @@ BitChord Lite is not affiliated with, endorsed by, or connected to BitChord, You
 
 ## Status
 
-The web UI is imported and the Tauri scaffold, config, and icons are in place. The Rust extension bridge and signed DMG are the next implementation stage; this is a staged build, not a completed DMG yet.
+The Tauri shell, native Rust bridge, and anonymous YouTube Music playback are working. This repository is a staged build: it is usable for YouTube Music today, while the source picker, local files, Spotify, sign-in, and the remaining BitChord integrations are still to come. See “What works in this build” above.

@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "in.sigidpam.bitchordlite",
   "build": {
-    "beforeDevCommand": "corepack pnpm --dir web/app dev",
+    "beforeDevCommand": "VITE_BITCHORD_NATIVE=1 corepack pnpm --dir web/app dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "corepack pnpm --dir web/app build",
+    "beforeBuildCommand": "VITE_BITCHORD_NATIVE=1 corepack pnpm --dir web/app build",
     "frontendDist": "../web/app/dist"
   },
   "app": {

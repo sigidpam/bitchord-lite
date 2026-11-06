@@ -3,8 +3,15 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { queryClient } from '@/lib/queryClient';
+import { installNativeFetchProxy } from '@/native/fetchProxy';
+import { installNativeLogBridge } from '@/native/logBridge';
 import { routes } from '@/routes';
 import '@/styles/global.css';
+
+// Must run before the first playback/browse request. A no-op in the browser build.
+installNativeFetchProxy();
+// Dev-only in the Tauri build: page logs and uncaught errors go to the terminal.
+installNativeLogBridge();
 
 const router = createBrowserRouter(routes);
 
