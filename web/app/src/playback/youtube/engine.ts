@@ -3,8 +3,10 @@ import { buildSabrFormat } from 'googlevideo/utils';
 import shaka from 'shaka-player/dist/shaka-player.compiled';
 import { Constants, Utils, YT, type Innertube } from 'youtubei.js/web';
 import { timed, trackLog } from '../trackLog';
+import { pickAudioVariant } from './audioQuality';
 import { botguard } from './botguard';
 import { ytAuthSnapshot } from '@/extension/useYtAuth';
+import type { AudioQuality } from '@/state/player';
 import { getInnertube, getSignedInnertube } from './innertube';
 import {
   CLIENT_ATTEMPTS,
@@ -156,7 +158,10 @@ export class YouTubeEngine {
    * actually flowing; rejects with [UnplayableError] for a settled "no",
    * [SupersededError] if another load replaced this one.
    */
-  async load(videoId: string, { startSec = 0, autoplay = true } = {}): Promise<LoadedTrack> {
+  async load(
+    videoId: string,
+    { startSec = 0, autoplay = true, quality = 'high' }: { startSec?: number; autoplay?: boolean; quality?: AudioQuality } = {},
+  ): Promise<LoadedTrack> {
     const generation = ++this.generation;
     this.loading = true;
     const started = performance.now();
@@ -187,7 +192,7 @@ export class YouTubeEngine {
         }
         this.checkCurrent(generation);
         try {
-          const track = await this.startStream(player, resolved, startSec, autoplay, generation);
+          const track = await this.startStream(player, resolved, startSec, autoplay, generation, quality);
           trackLog.i(
             `playing via ${track.client}, ${track.format}, first audio after ${Math.round(performance.now() - started)}ms`,
             videoId,
@@ -221,6 +226,7 @@ export class YouTubeEngine {
     startSec: number,
     autoplay: boolean,
     generation: number,
+    quality: AudioQuality,
   ): Promise<LoadedTrack> {
     const { videoId, client, info, signed } = resolved;
     await player.unload();
@@ -238,7 +244,7 @@ export class YouTubeEngine {
       player.load(`data:application/dash+xml;base64,${btoa(manifest)}`, startSec, 'application/dash+xml'),
     );
     this.checkCurrent(generation);
-    const selected = this.selectAudio(player);
+    const selected = this.selectAudio(player, quality);
     const format = `${selected.label} ${mode}`;
     if (direct) this.direct = resolved;
 
@@ -390,8 +396,13 @@ export class YouTubeEngine {
     });
   }
 
-  /** Picks Opus 251 (else AAC 140): the preferred codec's highest bitrate, avoiding DRC renditions. */
-  private selectAudio(player: shaka.Player): { label: string; stats: Omit<StreamStats, 'mode'> } {
+  /**
+   * Picks the stream for [quality] within the preferred codec (Opus, else
+   * AAC): Low is the lowest-bitrate rendition, Medium the next one up, High
+   * the best. Lossless prefers FLAC/ALAC if the source ever offers one and
+   * otherwise uses High, since YouTube's ladder is lossy.
+   */
+  private selectAudio(player: shaka.Player, quality: AudioQuality): { label: string; stats: Omit<StreamStats, 'mode'> } {
     const tracks = player.getVariantTracks().filter((t) => !/drc/i.test(t.originalAudioId ?? ''));
     const statsOf = (t: shaka.extern.Track) => ({
       codec: codecName(t.audioCodec),
@@ -400,15 +411,13 @@ export class YouTubeEngine {
       sampleRateHz: t.audioSamplingRate,
       channels: t.channelsCount,
     });
-    for (const codec of this.preferredCodecs) {
-      const best = tracks
-        .filter((t) => t.audioCodec?.startsWith(codec))
-        .sort((a, b) => (b.audioBandwidth ?? b.bandwidth) - (a.audioBandwidth ?? a.bandwidth))[0];
-      if (best) {
-        if (!best.active) player.selectVariantTrack(best, true);
-        const itag = (best.originalAudioId ?? '').split('-')[0];
-        return { label: `${itag} ${codec} ${Math.round((best.audioBandwidth ?? best.bandwidth) / 1000)}kbps`, stats: statsOf(best) };
-      }
+    const picked = pickAudioVariant(tracks, quality, this.preferredCodecs);
+    if (picked) {
+      if (!picked.active) player.selectVariantTrack(picked, true);
+      return {
+        label: `${(picked.originalAudioId ?? '').split('-')[0]} ${picked.audioCodec} ${Math.round((picked.audioBandwidth ?? picked.bandwidth ?? 0) / 1000)}kbps`,
+        stats: statsOf(picked),
+      };
     }
     const active = player.getVariantTracks().find((t) => t.active);
     return active

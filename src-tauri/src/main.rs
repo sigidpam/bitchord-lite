@@ -1,9 +1,10 @@
 mod bridge;
+mod yt_auth;
 
 fn main() {
     tauri::Builder::default()
-        .setup(|_app| {
-            bridge::spawn();
+        .setup(|app| {
+            bridge::spawn(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

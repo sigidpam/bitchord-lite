@@ -1,7 +1,8 @@
 import { ArrowUpRight, ChevronsUpDown } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Menu, MenuHeader, MenuItem, MenuSeparator } from '@/components/Menu';
-import { useRefreshYtAuth, useSelectChannel, useSetConnected, useYtAuth } from '@/extension/useYtAuth';
+import { config } from '@/config';
+import { useRefreshYtAuth, useSelectChannel, useSetConnected, useYtAuth, useYtSignIn } from '@/extension/useYtAuth';
 
 const SIGN_IN_URL = 'https://accounts.google.com/ServiceLogin?service=youtube&continue=https://music.youtube.com/';
 
@@ -33,6 +34,7 @@ export function AccountButton() {
   const select = useSelectChannel();
   const connect = useSetConnected();
   const refresh = useRefreshYtAuth();
+  const signIn = useYtSignIn();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const close = useCallback(() => setAnchor(null), []);
 
@@ -40,6 +42,18 @@ export function AccountButton() {
   const { auth } = status;
 
   if (!auth.browserSignedIn) {
+    if (config.native) {
+      return (
+        <button
+          className={pill}
+          onClick={() => signIn.mutate()}
+          disabled={signIn.isPending}
+          title={signIn.error instanceof Error ? signIn.error.message : 'Sign in with Google'}
+        >
+          {signIn.isPending ? 'Waiting for sign-in…' : 'Sign In'}
+        </button>
+      );
+    }
     return (
       <a className={pill} href={SIGN_IN_URL} target="_blank" rel="noreferrer">
         Sign In

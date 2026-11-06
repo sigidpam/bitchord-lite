@@ -140,3 +140,28 @@ export function useSetConnected() {
     onSuccess: adopt,
   });
 }
+
+/**
+ * Desktop sign-in: opens the native Google window, then polls until the
+ * YouTube session cookies are visible. The browser build keeps its link to
+ * Google's own sign-in instead.
+ */
+export function useYtSignIn() {
+  return useMutation({
+    mutationFn: async () => {
+      const extension = detected();
+      if (!extension) throw new Error('The native bridge is not available');
+      await extension.bridge.call('yt.signIn', {});
+      for (let attempt = 0; attempt < 300; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const state = await extension.bridge.call('yt.authState', {}, { timeoutMs: 20_000 });
+        if (state.signedIn) {
+          adopt(state);
+          return state;
+        }
+        if (state.browserSignedIn && state.problem) throw new Error(state.problem);
+      }
+      throw new Error('Sign-in timed out');
+    },
+  });
+}
