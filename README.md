@@ -7,7 +7,7 @@ BitChord Lite keeps the BitChord web player's UI and playback engine, wraps it i
 - Upstream: https://github.com/kushagrasinghx/BitChord
 - Source fork: https://github.com/sigidpam/BitChord
 - License: GPLv3
-- Status: architecture and scaffold in progress; the first signed DMG is the v0.1 milestone
+- Status: web UI imported and Tauri scaffold present; the Rust bridge and first signed DMG are next
 
 ## Why a native bridge
 
@@ -103,6 +103,8 @@ Requirements:
 
 ```bash
 corepack pnpm install
+corepack pnpm --dir web install
+printf 'VITE_PARTY_SERVER_URL=https://bitchord-listen-together.onrender.com\n' > web/app/.env.local
 corepack pnpm tauri dev
 ```
 
@@ -114,7 +116,7 @@ corepack pnpm tauri build
 
 The DMG is written under `src-tauri/target/release/bundle/dmg/`.
 
-The first scaffold lands in this repository after the architecture commit; the build commands above are the target flow.
+The current scaffold loads the web UI; the native bridge is the next milestone.
 
 ## Signing and notarization
 
@@ -158,4 +160,4 @@ BitChord Lite is not affiliated with, endorsed by, or connected to BitChord, You
 
 ## Status
 
-Architecture and repository scaffold are the initial commit. The Tauri shell and Rust bridge are the next implementation step; this is a staged build, not a completed DMG yet.
+The web UI is imported and the Tauri scaffold, config, and icons are in place. The Rust extension bridge and signed DMG are the next implementation stage; this is a staged build, not a completed DMG yet.
