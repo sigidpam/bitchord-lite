@@ -147,6 +147,58 @@ xcrun stapler staple src-tauri/target/release/bundle/dmg/BitChord-Lite_*.dmg
 
 For local testing without a certificate, an unsigned DMG can be built and opened with right-click → Open.
 
+### Distribution without a paid Developer ID
+
+A Developer ID Application certificate and notarization require the paid Apple Developer Program. If you do not want to pay, these are the practical free routes:
+
+**Unsigned DMG with a bypass**
+
+- Build normally with `corepack pnpm tauri build`. The app is not signed.
+- On the Mac that built it, it opens normally.
+- On another Mac, the download is quarantined. The user must either:
+  - System Settings → Privacy & Security → **Open Anyway**, or
+  - remove the quarantine flag:
+    ```bash
+    xattr -dr com.apple.quarantine "/Applications/BitChord Lite.app"
+    ```
+- This is the simplest free option, but macOS will show a security warning.
+
+**Ad-hoc signing**
+
+Ad-hoc signing does not provide trust or notarization; Gatekeeper still warns. It can reduce some “app is damaged” failures:
+
+```bash
+codesign --force --deep --options runtime --sign - "BitChord Lite.app"
+```
+
+**Homebrew cask/tap**
+
+For technical users, a cask can remove the quarantine attribute during install. A tap gives a one-command install without the browser warning:
+
+```ruby
+cask "bitchord-lite" do
+  version "0.1.0"
+  sha256 "REPLACE_WITH_DMG_SHA256"
+  url "https://github.com/sigidpam/bitchord-lite/releases/download/v0.1.0/BitChord-Lite_0.1.0_x64.dmg"
+  name "BitChord Lite"
+  desc "Lightweight YouTube Music player"
+  homepage "https://github.com/sigidpam/bitchord-lite"
+  app "BitChord Lite.app"
+  quarantine false
+end
+```
+
+**Web/PWA alternative**
+
+The BitChord web player can be installed as a browser app/PWA from Brave or Chrome. No DMG, no Apple fee, and no Gatekeeper. The companion extension still has to be loaded in the browser.
+
+**Fee waiver**
+
+Apple offers fee waivers for accredited educational institutions, nonprofits, and government entities. Individual hobby projects generally do not qualify.
+
+The only route to a DMG that opens cleanly on any Mac without warnings is a paid Developer ID certificate plus notarization. The free routes trade that polish for a manual approval or a technical install path.
+
+
 ## Attribution and license
 
 BitChord Lite is a derivative of **BitChord**, originally by Kushagra Singh and contributors:
