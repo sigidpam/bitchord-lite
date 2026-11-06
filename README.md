@@ -210,12 +210,6 @@ end
 
 The BitChord web player can be installed as a browser app/PWA from Brave or Chrome. No DMG, no Apple fee, and no Gatekeeper. The companion extension still has to be loaded in the browser.
 
-**Fee waiver**
-
-Apple offers fee waivers for accredited educational institutions, nonprofits, and government entities. Individual hobby projects generally do not qualify.
-
-The only route to a DMG that opens cleanly on any Mac without warnings is a paid Developer ID certificate plus notarization. The free routes trade that polish for a manual approval or a technical install path.
-
 
 ## Troubleshooting
 
