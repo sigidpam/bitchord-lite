@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { useTrackLog } from '@/playback/trackLog';
 import { usePlayer } from '@/state/player';
@@ -64,6 +64,15 @@ export default function DebugPage() {
     [lines, filter, nowPlaying],
   );
   const id = parseVideoId(input);
+
+  // `?play=<id or URL>` starts a track on open, so a build can be smoke-tested
+  // (and a desktop shell's playback checked) without clicking through the UI.
+  useEffect(() => {
+    const requested = parseVideoId(new URLSearchParams(location.search).get('play') ?? '');
+    if (requested) void playVideo(requested);
+    // Only on mount: the query is a launch instruction, not playback state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
