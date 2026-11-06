@@ -38,6 +38,7 @@ export default function AlbumPage() {
         info={data}
         canPlay={tracks.length > 0}
         motion={motion}
+        collection={{ kind: 'album', id: data.id }}
         onPlay={() => playList(tracks, 0, context)}
         onShuffle={() => shuffleList(tracks, context)}
       />

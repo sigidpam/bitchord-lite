@@ -50,6 +50,13 @@ const LIBRARY: NavItem[] = (Object.keys(LIBRARY_ICONS) as (keyof typeof LIBRARY_
   Icon: LIBRARY_ICONS[section],
 }));
 
+/** The device library: always available, signed in or not. */
+const YOUR_LIBRARY: NavItem[] = [
+  { to: '/library/favorites', label: 'Favorite Songs', Icon: SongsIcon },
+  { to: '/library/saved-albums', label: 'Saved Albums', Icon: AlbumsIcon },
+  { to: '/library/saved-playlists', label: 'Saved Playlists', Icon: AllPlaylistsIcon },
+];
+
 // A sidebar row; NavLink sets aria-current on the page's own row.
 const item =
   'group flex h-9 items-center gap-2 mb-0.5 p-1 rounded-nav type-body-reduced text-primary hover:bg-quinary aria-[current=page]:bg-nav-selected';
@@ -159,6 +166,8 @@ export function Sidebar() {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pr-3 pl-5 [scrollbar-width:none]">
           <NavList items={PRIMARY} onNavigate={close} />
+          <h2 className={sectionHeader}>Your Library</h2>
+          <NavList items={YOUR_LIBRARY} onNavigate={close} />
           {signedIn && <LibraryNav onNavigate={close} />}
           {spotifySignedIn && <SpotifyNav onNavigate={close} />}
         </div>

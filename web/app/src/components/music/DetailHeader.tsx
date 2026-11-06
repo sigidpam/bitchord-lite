@@ -5,6 +5,7 @@ import { PlayIcon } from '@/components/icons/Transport';
 import { useSetListSaved, useSignedIn } from '@/data/music/queries';
 import type { AppleMotion } from '@/data/apple/motionArt';
 import type { HeaderInfo } from '@/data/music/types';
+import { useLibrary, type SavedCollection } from '@/state/library';
 import { Artwork } from './Artwork';
 import { ExplicitBadge } from './ExplicitBadge';
 import { MotionArtwork } from './MotionArtwork';
@@ -19,6 +20,8 @@ interface DetailHeaderProps {
   extra?: React.ReactNode;
   /** Apple's motion artwork for an album, over the cover once it plays. */
   motion?: AppleMotion | null;
+  /** The album or playlist this header belongs to, for the device library. */
+  collection?: { kind: SavedCollection['kind']; id: string };
 }
 
 /** Shuffle (circle) · Play (pill), report §14; also the Spotify playlist's Import button. */
@@ -32,11 +35,47 @@ export const detailButton = {
  * Album and playlist header (report §3, §14): artwork with its glow, title,
  * artist, metadata, a three-line description, then Shuffle · Play.
  */
-export function DetailHeader({ info, onPlay, onShuffle, canPlay, extra, motion }: DetailHeaderProps) {
+export function DetailHeader({ info, onPlay, onShuffle, canPlay, extra, motion, collection }: DetailHeaderProps) {
   const [expanded, setExpanded] = useState(false);
   const signedIn = useSignedIn();
   const setSaved = useSetListSaved();
-  const library = signedIn ? info.library : null;
+  const localSaved = useLibrary((state) =>
+    collection
+      ? (collection.kind === 'album' ? state.albums : state.playlists).some((item) => item.id === collection.id)
+      : false,
+  );
+  const saveCollection = useLibrary((state) => state.saveCollection);
+  const removeCollection = useLibrary((state) => state.removeCollection);
+  const remote = signedIn ? info.library : null;
+  const saved = collection ? localSaved : remote?.saved === true;
+  const canSave = !!collection || !!remote;
+
+  const toggleSaved = () => {
+    if (collection) {
+      if (localSaved) {
+        removeCollection(collection.kind, collection.id);
+        if (signedIn && info.library) {
+          setSaved.mutate({ playlistId: info.library.playlistId, saved: false });
+        }
+      } else {
+        saveCollection({
+          kind: collection.kind,
+          id: collection.id,
+          title: info.title,
+          subtitle: info.subtitle,
+          meta: info.meta,
+          thumbnail: info.thumbnail,
+          artists: info.artists,
+        });
+        if (signedIn && info.library) {
+          setSaved.mutate({ playlistId: info.library.playlistId, saved: true });
+        }
+      }
+      return;
+    }
+    if (remote) setSaved.mutate({ playlistId: remote.playlistId, saved: !remote.saved });
+  };
+
   return (
     // Artwork beside the headings, description and actions; stacked and centred below 768px.
     <div className="mx-(--body-gutter) mb-10 grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr_auto] gap-x-[34px] pt-11 [grid-template-areas:'artwork_headings'_'artwork_description'_'artwork_actions'] max-md:grid-cols-[1fr] max-md:grid-rows-[auto] max-md:justify-items-center max-md:pt-4 max-md:text-center max-md:[grid-template-areas:'artwork'_'headings'_'actions'_'description']">
@@ -103,16 +142,16 @@ export function DetailHeader({ info, onPlay, onShuffle, canPlay, extra, motion }
           <PlayIcon size={18} />
           <span>Play</span>
         </button>
-        {library && (
+        {canSave && (
           <button
             className={detailButton.circle}
-            aria-label={library.saved ? 'Remove from Library' : 'Add to Library'}
-            aria-pressed={library.saved}
-            title={library.saved ? 'In your library' : 'Add to Library'}
-            disabled={setSaved.isPending}
-            onClick={() => setSaved.mutate({ playlistId: library.playlistId, saved: !library.saved })}
+            aria-label={saved ? 'Remove from Library' : 'Save to Library'}
+            aria-pressed={saved}
+            title={saved ? 'Saved to your library' : 'Save to your library'}
+            disabled={!collection && setSaved.isPending}
+            onClick={toggleSaved}
           >
-            {library.saved ? <Check size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
+            {saved ? <Check size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
           </button>
         )}
         {extra}

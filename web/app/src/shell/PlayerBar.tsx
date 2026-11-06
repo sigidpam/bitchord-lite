@@ -13,6 +13,7 @@ import {
 } from '@/components/icons/Transport';
 import { FavoriteButton } from '@/components/music/FavoriteButton';
 import { TrackMenu } from '@/components/music/TrackMenu';
+import { trackFromNowPlaying } from '@/state/library';
 import { usePlayer } from '@/state/player';
 import { useUi } from '@/state/ui';
 import { Lcd } from './Lcd';
@@ -30,13 +31,14 @@ const fading = `${action} ${fadeForVolume}`;
 export function PlayerBar() {
   const sidePanel = useUi((s) => s.sidePanel);
   const toggleSidePanel = useUi((s) => s.toggleSidePanel);
-  const hasTrack = usePlayer((s) => s.nowPlaying !== null);
-  const videoId = usePlayer((s) => s.nowPlaying?.videoId ?? null);
+  const nowPlaying = usePlayer((s) => s.nowPlaying);
+  const hasTrack = nowPlaying !== null;
   // The queue's entry for what's playing: the track menu needs the full track.
   const track = usePlayer((s) => {
     const entry = s.queue[s.index]?.track;
     return entry && entry.videoId === s.nowPlaying?.videoId ? entry : null;
   });
+  const favoriteTrack = track ?? (nowPlaying ? trackFromNowPlaying(nowPlaying) : null);
   const playing = usePlayer((s) => s.status === 'playing' || s.status === 'buffering');
   const hasNext = usePlayer((s) => s.index + 1 < s.queue.length || s.repeat !== 'off' || (s.autoplay && s.index >= 0));
   const shuffle = usePlayer((s) => s.shuffle);
@@ -92,7 +94,7 @@ export function PlayerBar() {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setVolumeOpen(false);
           }}
         >
-          <FavoriteButton videoId={videoId} className={fading} />
+          <FavoriteButton track={favoriteTrack} className={fading} />
           {track && <TrackMenu track={track} className={fading} placement="above-end" />}
           {/* Always here: the panel itself says whether this track has lyrics, and from where. */}
           <button className={fading} aria-label="Lyrics" aria-pressed={sidePanel === 'lyrics'} onClick={() => toggleSidePanel('lyrics')}>
