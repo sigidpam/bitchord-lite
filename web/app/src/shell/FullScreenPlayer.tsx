@@ -22,6 +22,7 @@ import { VideoSurface } from '@/components/music/VideoSurface';
 import { useTrackMotion } from '@/data/apple/motionArt';
 import { sizedArtwork } from '@/lib/artwork';
 import { usePlayer } from '@/state/player';
+import { trackFromNowPlaying } from '@/state/library';
 import { useUi } from '@/state/ui';
 import { useHasVideo, useVideo } from '@/state/video';
 import { Credits, PageLink, pageLink } from './Lcd';
@@ -141,6 +142,7 @@ export function FullScreenPlayer() {
     const entry = s.queue[s.index]?.track;
     return entry && entry.videoId === s.nowPlaying?.videoId ? entry : null;
   });
+  const favoriteTrack = track ?? (nowPlaying ? trackFromNowPlaying(nowPlaying) : null);
   // Apple's animated sleeve over the cover, as the phone's now-playing shows it.
   const motion = useTrackMotion(nowPlaying?.title, nowPlaying?.artist, track?.album?.name);
   const { pathname } = useLocation();
@@ -358,7 +360,7 @@ export function FullScreenPlayer() {
               <NerdStats />
             </div>
             <FavoriteButton
-              videoId={nowPlaying.videoId}
+              track={favoriteTrack}
               className="grid size-8 flex-none place-items-center rounded-full bg-quinary text-primary hover:bg-quaternary"
               size={18}
             />

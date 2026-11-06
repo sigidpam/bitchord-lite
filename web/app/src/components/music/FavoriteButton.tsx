@@ -1,35 +1,33 @@
 import { StarFilledIcon, StarIcon } from '@/components/icons/Transport';
-import { useLikeStatus, useSetLiked, useSignedIn } from '@/data/music/queries';
+import type { Track } from '@/data/music/types';
+import { useFavorite } from './useFavorite';
 
 interface FavoriteButtonProps {
-  videoId: string | null;
+  track: Track | null;
   className?: string;
   size?: number;
 }
 
 /**
- * Apple's Favorite star, backed by YouTube Music's like (a liked song joins
- * Liked Music). Only shown signed in; the state is read from the track's
- * watch page, as YouTube's own player reads it.
+ * Apple's Favorite star. It writes to the device library (the source of
+ * truth) and, when signed in, mirrors the like to YouTube Music. Visible
+ * signed out too, so the native build can build its own library.
  */
-export function FavoriteButton({ videoId, className, size = 18 }: FavoriteButtonProps) {
-  const signedIn = useSignedIn();
-  const status = useLikeStatus(videoId);
-  const setLiked = useSetLiked();
-  if (!signedIn || !videoId) return null;
-  const liked = status.data === 'LIKE';
+export function FavoriteButton({ track, className, size = 18 }: FavoriteButtonProps) {
+  const { saved, toggle } = useFavorite(track);
+  if (!track) return null;
   return (
     <button
       className={className}
-      aria-label={liked ? 'Unfavorite' : 'Favorite'}
-      aria-pressed={liked}
-      disabled={status.isPending}
+      aria-label={saved ? 'Remove from Favorites' : 'Add to Favorites'}
+      aria-pressed={saved}
+      title={saved ? 'In Favorites' : 'Add to Favorites'}
       onClick={(event) => {
         event.stopPropagation();
-        setLiked.mutate({ videoId, liked: !liked });
+        toggle();
       }}
     >
-      {liked ? <StarFilledIcon size={size} /> : <StarIcon size={size} />}
+      {saved ? <StarFilledIcon size={size} /> : <StarIcon size={size} />}
     </button>
   );
 }

@@ -34,6 +34,7 @@ export default function PlaylistPage() {
       <DetailHeader
         info={header}
         canPlay={tracks.length > 0}
+        collection={{ kind: 'playlist', id }}
         onPlay={() => playList(tracks, 0, context)}
         onShuffle={() => shuffleList(tracks, context)}
       />

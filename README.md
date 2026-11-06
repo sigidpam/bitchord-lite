@@ -83,10 +83,13 @@ YouTube Music is working today; any YouTube video id or URL can be played from t
 - Anonymous YouTube Music home feed, search, browse, and autoplay radio.
 - BotGuard / WebPO token flow: the page runs BotGuard, the bridge forwards `Create`/`GenerateIT`.
 - Audio playback through proxied googlevideo streams (verified with VISIONOS direct audio in WKWebView: Opus 251, 206 range responses).
+- Device-local **Favorite Songs**, **Saved Albums**, and **Saved Playlists**, persisted in the WebView. Favorites and saves are mirrored to YouTube Music when a signed-in session exists.
 - Any YouTube video can be played by id or URL from the Debug page (`/debug`, or `?play=<id or URL>` in the desktop dev build).
 - Unsigned `.app` / `.dmg` build.
 
 Not in this build yet: in-app source picker, local files, Spotify playback, Google/YouTube sign-in and age-gated tracks, lyrics, downloads, Discord, Last.fm, and Listen Together parity.
+
+The device library starts empty. Existing YouTube liked songs and playlists are not imported automatically; that requires sign-in, which is a later stage.
 
 ## Repository layout
 
