@@ -7,7 +7,7 @@ BitChord Lite keeps the BitChord web player's UI and playback engine, wraps it i
 - Upstream: https://github.com/kushagrasinghx/BitChord
 - Source fork: https://github.com/sigidpam/BitChord
 - License: GPLv3
-- Status: **v0.3 development.** Native YouTube Music playback, the device library, back navigation, sound quality, and native Google sign-in are on `main`. The latest tagged release is [v0.2.0](https://github.com/sigidpam/bitchord-lite/releases/tag/v0.2.0) (ad-hoc signed, not notarized); source picker UI, local files, and Spotify remain the next stage.
+- Status: **v0.3.0.** Native YouTube Music playback, the device library, back navigation, sound quality, and native Google sign-in are in this build. [v0.3.0 release](https://github.com/sigidpam/bitchord-lite/releases/tag/v0.3.0) (ad-hoc signed, not notarized); source picker UI, local files, and Spotify remain the next stage.
 
 ![BitChord Lite desktop demo](assets/demo.gif)
 
@@ -198,9 +198,9 @@ For technical users, a cask can remove the quarantine attribute during install. 
 
 ```ruby
 cask "bitchord-lite" do
-  version "0.2.0"
+  version "0.3.0"
   sha256 "REPLACE_WITH_DMG_SHA256"
-  url "https://github.com/sigidpam/bitchord-lite/releases/download/v0.2.0/BitChord.Lite_0.2.0_universal.dmg"
+  url "https://github.com/sigidpam/bitchord-lite/releases/download/v0.3.0/BitChord.Lite_0.3.0_universal.dmg"
   name "BitChord Lite"
   desc "Lightweight YouTube Music player"
   homepage "https://github.com/sigidpam/bitchord-lite"
