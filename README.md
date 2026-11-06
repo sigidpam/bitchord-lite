@@ -7,7 +7,11 @@ BitChord Lite keeps the BitChord web player's UI and playback engine, wraps it i
 - Upstream: https://github.com/kushagrasinghx/BitChord
 - Source fork: https://github.com/sigidpam/BitChord
 - License: GPLv3
-- Status: **v0.1 development build.** Native YouTube Music playback (signed out) works through the bundled Rust bridge. The first unsigned DMG can be built locally. Source picker UI, local files, Spotify, and sign-in are the next stage.
+- Status: **v0.1 development build.** Native YouTube Music playback (signed out) works through the bundled Rust bridge. [v0.1.0 release](https://github.com/sigidpam/bitchord-lite/releases/tag/v0.1.0) (ad-hoc signed, not notarized); source picker UI, local files, Spotify, and sign-in are the next stage.
+
+![BitChord Lite desktop demo](assets/demo.gif)
+
+*Home, playback, full-screen lyrics, and browsing in the native macOS build.*
 
 ## Why a native bridge
 
