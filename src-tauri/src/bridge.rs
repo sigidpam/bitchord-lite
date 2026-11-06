@@ -15,8 +15,11 @@ use bytes::Bytes;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tauri::AppHandle;
 use tower_http::cors::CorsLayer;
 use url::Url;
+
+use crate::yt_auth;
 
 const PORT: u16 = 47823;
 const UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36";
@@ -25,17 +28,19 @@ const PROTOCOL: u8 = 1;
 
 struct AppState {
     client: reqwest::Client,
+    app: AppHandle,
+    auth: yt_auth::AuthStore,
 }
 
-pub fn spawn() {
-    tauri::async_runtime::spawn(async {
-        if let Err(error) = serve().await {
+pub fn spawn(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = serve(app).await {
             eprintln!("[bridge] {error}");
         }
     });
 }
 
-async fn serve() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn serve(app: AppHandle) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // No whole-request timeout: audio is streamed and a long track can outlive
     // any fixed cap. Connect timeouts are the useful guard here.
     let client = reqwest::Client::builder()
@@ -43,7 +48,11 @@ async fn serve() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .connect_timeout(Duration::from_secs(15))
         .build()?;
 
-    let state = Arc::new(AppState { client });
+    let state = Arc::new(AppState {
+        client,
+        app,
+        auth: yt_auth::AuthStore::default(),
+    });
 
     let app = Router::new()
         .route("/health", get(health))
@@ -170,17 +179,53 @@ async fn handle_bridge(
             "browser": "chromium",
             "capabilities": ["yt", "yt.auth"],
         })),
-        "yt.authState" | "yt.selectChannel" | "yt.setConnected" => Ok(signed_out()),
+        "yt.authState" => {
+            let refresh = params.get("refresh").and_then(Value::as_bool).unwrap_or(false);
+            let auth = yt_auth::auth_state(&state.app, &state.client, &state.auth, refresh).await;
+            serde_json::to_value(auth).map_err(|error| ("internal", error.to_string()))
+        }
+        "yt.setConnected" => {
+            let connected = params
+                .get("connected")
+                .and_then(Value::as_bool)
+                .unwrap_or(true);
+            yt_auth::set_connected(&state.auth, connected);
+            let auth = yt_auth::auth_state(&state.app, &state.client, &state.auth, true).await;
+            serde_json::to_value(auth).map_err(|error| ("internal", error.to_string()))
+        }
+        "yt.selectChannel" => {
+            let channel = params
+                .get("channelId")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            yt_auth::select_channel(&state.auth, channel);
+            let auth = yt_auth::auth_state(&state.app, &state.client, &state.auth, true).await;
+            serde_json::to_value(auth).map_err(|error| ("internal", error.to_string()))
+        }
+        "yt.signIn" => {
+            yt_auth::open_login(&state.app).map_err(|error| ("internal", error))?;
+            Ok(json!({}))
+        }
         "yt.fetch" => {
             let params: YtFetchParams =
                 serde_json::from_value(params).map_err(|error| ("internal", error.to_string()))?;
-            if params.auth.unwrap_or(false) {
-                return Err((
-                    "unauthenticated",
-                    "Signed-in requests are not available in this build".into(),
-                ));
-            }
-            let response = fetch_http(state, &params.request, true)
+            let signed = params.auth.unwrap_or(false);
+            let auth = if signed {
+                let url =
+                    Url::parse(&params.request.url).map_err(|error| ("internal", error.to_string()))?;
+                match yt_auth::signed_request(&state.app, &state.client, &state.auth, &url).await {
+                    Some(auth) => Some(auth),
+                    None => {
+                        return Err((
+                            "unauthenticated",
+                            "Sign in to YouTube Music first".into(),
+                        ))
+                    }
+                }
+            } else {
+                None
+            };
+            let response = fetch_http(state, &params.request, true, auth.as_ref())
                 .await
                 .map_err(|error| ("network", error))?;
             serde_json::to_value(response).map_err(|error| ("internal", error.to_string()))
@@ -192,21 +237,11 @@ async fn handle_bridge(
     }
 }
 
-fn signed_out() -> Value {
-    json!({
-        "browserSignedIn": false,
-        "connected": false,
-        "signedIn": false,
-        "accounts": [],
-        "active": null,
-        "problem": null,
-    })
-}
-
 async fn fetch_http(
     state: &AppState,
     request: &HttpRequest,
     extension_request: bool,
+    auth: Option<&yt_auth::SignedRequest>,
 ) -> Result<HttpResponse, String> {
     let url = Url::parse(&request.url).map_err(|error| error.to_string())?;
     if !is_youtube_host(&url) {
@@ -228,6 +263,25 @@ async fn fetch_http(
         }
     }
     apply_upstream_headers(&url, &mut headers, extension_request);
+    if let Some(auth) = auth {
+        if let Ok(value) = HeaderValue::from_str(&auth.cookie) {
+            headers.insert(header::COOKIE, value);
+        }
+        if let Ok(value) = HeaderValue::from_str(&auth.authorization) {
+            headers.insert(header::AUTHORIZATION, value);
+        }
+        if let Ok(value) = HeaderValue::from_str(&auth.auth_user) {
+            headers.insert(HeaderName::from_static("x-goog-authuser"), value);
+        }
+        if let Some(page_id) = &auth.page_id {
+            if let Ok(value) = HeaderValue::from_str(page_id) {
+                headers.insert(HeaderName::from_static("x-goog-pageid"), value);
+            }
+        }
+        if let Ok(value) = HeaderValue::from_str(&auth.x_origin) {
+            headers.insert(HeaderName::from_static("x-origin"), value);
+        }
+    }
 
     let mut builder = state.client.request(method, url.clone()).headers(headers);
     if let Some(body) = &request.body {

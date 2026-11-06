@@ -33,6 +33,10 @@ export function useKeyboardShortcuts() {
   const navigate = useNavigate();
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if ((event.altKey && event.key === 'ArrowLeft') || ((event.metaKey || event.ctrlKey) && event.key === '[')) {
+        event.preventDefault();
+        return navigate(-1);
+      }
       if (event.defaultPrevented || event.altKey) return;
       const player = usePlayer.getState();
       const command = event.metaKey || event.ctrlKey;

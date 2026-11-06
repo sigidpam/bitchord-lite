@@ -7,7 +7,7 @@ BitChord Lite keeps the BitChord web player's UI and playback engine, wraps it i
 - Upstream: https://github.com/kushagrasinghx/BitChord
 - Source fork: https://github.com/sigidpam/BitChord
 - License: GPLv3
-- Status: **v0.2.0.** Native YouTube Music playback (signed out) and the device library work through the bundled Rust bridge. [v0.2.0 release](https://github.com/sigidpam/bitchord-lite/releases/tag/v0.2.0) (ad-hoc signed, not notarized); source picker UI, local files, Spotify, and sign-in are the next stage.
+- Status: **v0.3 development.** Native YouTube Music playback, the device library, back navigation, sound quality, and native Google sign-in are on `main`. The latest tagged release is [v0.2.0](https://github.com/sigidpam/bitchord-lite/releases/tag/v0.2.0) (ad-hoc signed, not notarized); source picker UI, local files, and Spotify remain the next stage.
 
 ![BitChord Lite desktop demo](assets/demo.gif)
 
@@ -30,7 +30,7 @@ The bridge listens on `127.0.0.1:47823` only and exposes:
 | Route | Purpose |
 |---|---|
 | `GET /health` | Liveness check |
-| `POST /bridge` | The same versioned bridge envelope the extension used (`ping`, `yt.fetch`, `yt.authState`) |
+| `POST /bridge` | The same versioned bridge envelope the extension used (`ping`, `yt.fetch`, `yt.authState`, `yt.signIn`) |
 | `GET/POST/HEAD /proxy?url=…` | YouTube/googlevideo proxy: adds the Origin/Referer/X-Origin headers the extension's DNR rules added; streams media and forwards `Range` |
 | `POST /log` | Dev-only mirror of the page's track log into the terminal |
 
@@ -80,16 +80,19 @@ YouTube Music is working today; any YouTube video id or URL can be played from t
 
 - Tauri 2 desktop shell with the BitChord UI.
 - Native bridge speaking the existing bridge protocol; no browser extension.
-- Anonymous YouTube Music home feed, search, browse, and autoplay radio.
+- YouTube Music home feed, search, browse, autoplay radio, and audio playback (anonymous, or as the signed-in account).
+- Native Google sign-in in its own app window; cookies stay in the WebView and are used by the Rust bridge.
+- Back navigation above the page title, plus `Cmd+[` and `Alt+Left`.
+- **Sound Quality**: Low, Medium, High, and Lossless. YouTube has no lossless stream, so Lossless uses the best available audio until a lossless source is added.
 - BotGuard / WebPO token flow: the page runs BotGuard, the bridge forwards `Create`/`GenerateIT`.
 - Audio playback through proxied googlevideo streams (verified with VISIONOS direct audio in WKWebView: Opus 251, 206 range responses).
 - Device-local **Favorite Songs**, **Saved Albums**, and **Saved Playlists**, persisted in the WebView. Favorites and saves are mirrored to YouTube Music when a signed-in session exists.
 - Any YouTube video can be played by id or URL from the Debug page (`/debug`, or `?play=<id or URL>` in the desktop dev build).
 - Unsigned `.app` / `.dmg` build.
 
-Not in this build yet: in-app source picker, local files, Spotify playback, Google/YouTube sign-in and age-gated tracks, lyrics, downloads, Discord, Last.fm, and Listen Together parity.
+Not in this build yet: in-app source picker, local files, Spotify playback, lyrics, downloads, Discord, Last.fm, and Listen Together parity. Age-gated playback depends on the signed-in session and is not covered by automated tests.
 
-The device library starts empty. Existing YouTube liked songs and playlists are not imported automatically; that requires sign-in, which is a later stage.
+Existing YouTube liked songs and playlists are not imported into the device library; signed-in users browse them in the YouTube Library sections.
 
 ## Repository layout
 
@@ -229,7 +232,7 @@ lsof -nP -iTCP:47823 -sTCP:LISTEN
 
 **The downloaded app is blocked by Gatekeeper.** See “Distribution without a paid Developer ID” above. The DMG is not notarized.
 
-**Sign-in.** This build is anonymous. The bridge deliberately holds no Google cookies, and the account UI is hidden in the desktop build.
+**Sign-in.** Click the Sign In pill in the desktop sidebar. A Google sign-in window opens inside the app; its cookies stay in the app's WebView and the Rust bridge uses them for signed requests. The page never receives the cookies. The embedded sign-in flow is new — if Google refuses it, the browser-extension path still has the original sign-in behavior.
 
 ## Attribution and license
 

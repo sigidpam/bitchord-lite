@@ -43,6 +43,16 @@ export type RepeatMode = 'off' | 'all' | 'one';
 /** Crossfade lengths offered, in seconds; 0 is off. */
 export const CROSSFADE_CHOICES = [0, 3, 6, 9, 12] as const;
 
+/** The audio ceiling for new streams. YouTube has no lossless stream; that tier falls back to High. */
+export type AudioQuality = 'low' | 'medium' | 'high' | 'lossless';
+
+export const AUDIO_QUALITY_CHOICES: readonly { value: AudioQuality; label: string }[] = [
+  { value: 'low', label: 'Low · ~64 kbps' },
+  { value: 'medium', label: 'Medium · ~80 kbps' },
+  { value: 'high', label: 'High · best available' },
+  { value: 'lossless', label: 'Lossless' },
+] as const;
+
 interface Settings {
   shuffle: boolean;
   repeat: RepeatMode;
@@ -57,6 +67,8 @@ interface Settings {
   automixBars: number;
   /** Stats for nerds: the stream's codec, bitrate and sample rate, and what Automix is doing, under the artist. */
   showNerdStats: boolean;
+  /** Applies to the next track loaded; see YouTubeEngine.selectAudio. */
+  audioQuality: AudioQuality;
 }
 
 interface PlayerState extends Settings {
@@ -102,6 +114,7 @@ interface PlayerState extends Settings {
   setAutomix: (on: boolean) => void;
   setAutomixBars: (bars: number) => void;
   setShowNerdStats: (on: boolean) => void;
+  setAudioQuality: (quality: AudioQuality) => void;
 }
 
 // ---- Settings, kept across visits ---------------------------------------------------
@@ -117,6 +130,7 @@ const DEFAULT_SETTINGS: Settings = {
   automix: false,
   automixBars: 16,
   showNerdStats: false,
+  audioQuality: 'high',
 };
 
 function loadSettings(): Settings {
@@ -128,10 +142,10 @@ function loadSettings(): Settings {
 }
 
 function saveSettings(state: Settings) {
-  const { shuffle, repeat, autoplay, volume, muted, crossfadeSec, automix, automixBars, showNerdStats } = state;
+  const { shuffle, repeat, autoplay, volume, muted, crossfadeSec, automix, automixBars, showNerdStats, audioQuality } = state;
   localStorage.setItem(
     SETTINGS_KEY,
-    JSON.stringify({ shuffle, repeat, autoplay, volume, muted, crossfadeSec, automix, automixBars, showNerdStats }),
+    JSON.stringify({ shuffle, repeat, autoplay, volume, muted, crossfadeSec, automix, automixBars, showNerdStats, audioQuality }),
   );
 }
 
@@ -266,7 +280,7 @@ function ensureAutomix(): Promise<AutomixGraph | null> {
           back.gain = 1;
           applyVolumes();
           try {
-            const track = await back.engine.load(videoId, { autoplay: false });
+            const track = await back.engine.load(videoId, { autoplay: false, quality: usePlayer.getState().audioQuality });
             mixLoaded = { videoId, track };
             return true;
           } catch (error) {
@@ -636,6 +650,11 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     set({ showNerdStats });
     saveSettings(get());
   },
+
+  setAudioQuality(audioQuality) {
+    set({ audioQuality });
+    saveSettings(get());
+  },
 }));
 
 // For browser-driven tests, next to __bcAudio.
@@ -692,7 +711,7 @@ async function startAt(at: number, { startSec = 0, auto = false, autoplay = true
     all[1 - active]!.engine.stop().catch(() => {});
     deck.gain = 1;
     applyVolumes();
-    const track = await deck.engine.load(entry.track.videoId, { startSec, autoplay });
+    const track = await deck.engine.load(entry.track.videoId, { startSec, autoplay, quality: state.audioQuality });
     if (token !== loadToken) return;
     applyTrack(track, entry.track);
     if (!autoplay) usePlayer.setState({ status: 'paused' });
@@ -914,7 +933,7 @@ function maybeCrossfade() {
   trackLog.i(`crossfading into the next track over ${Math.round(remaining)}s`, entry.track.videoId);
 
   back.engine
-    .load(entry.track.videoId, { autoplay: true })
+    .load(entry.track.videoId, { autoplay: true, quality: state.audioQuality })
     .then((track) => {
       if (!fade || fade.token !== token || !decks) return;
       fade.pending = false;

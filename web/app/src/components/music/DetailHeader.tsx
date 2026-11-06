@@ -1,5 +1,6 @@
 import { Check, Plus, Shuffle } from 'lucide-react';
 import { useState } from 'react';
+import { BackButton } from '@/components/BackButton';
 import { PrefetchLink } from '@/components/PrefetchLink';
 import { PlayIcon } from '@/components/icons/Transport';
 import { useSetListSaved, useSignedIn } from '@/data/music/queries';
@@ -77,8 +78,12 @@ export function DetailHeader({ info, onPlay, onShuffle, canPlay, extra, motion, 
   };
 
   return (
-    // Artwork beside the headings, description and actions; stacked and centred below 768px.
-    <div className="mx-(--body-gutter) mb-10 grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr_auto] gap-x-[34px] pt-11 [grid-template-areas:'artwork_headings'_'artwork_description'_'artwork_actions'] max-md:grid-cols-[1fr] max-md:grid-rows-[auto] max-md:justify-items-center max-md:pt-4 max-md:text-center max-md:[grid-template-areas:'artwork'_'headings'_'actions'_'description']">
+    <>
+      <div className="mx-(--body-gutter) pt-6">
+        <BackButton className="-ml-1" />
+      </div>
+      {/* Artwork beside the headings, description and actions; stacked and centred below 768px. */}
+      <div className="mx-(--body-gutter) mb-10 grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr_auto] gap-x-[34px] pt-2 [grid-template-areas:'artwork_headings'_'artwork_description'_'artwork_actions'] max-md:grid-cols-[1fr] max-md:grid-rows-[auto] max-md:justify-items-center max-md:pt-4 max-md:text-center max-md:[grid-template-areas:'artwork'_'headings'_'actions'_'description']">
       <div className="relative w-[270px] self-start rounded-artwork-lg shadow-[0_10px_20px_0_var(--radiosityShadowColor)] [grid-area:artwork] max-lg:w-[220px] max-md:w-[min(270px,70vw)]">
         {info.thumbnail && (
           // A blurred copy behind the artwork: Apple's radiosity glow.
@@ -156,6 +161,7 @@ export function DetailHeader({ info, onPlay, onShuffle, canPlay, extra, motion, 
         )}
         {extra}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

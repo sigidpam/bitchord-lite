@@ -12,7 +12,7 @@ import { useHistorySettings } from '@/playback/historyReporting';
 import { config } from '@/config';
 import { Select } from '@/components/Select';
 import { AUTOMIX_BARS } from '@/playback/automix/choices';
-import { CROSSFADE_CHOICES, usePlayer } from '@/state/player';
+import { AUDIO_QUALITY_CHOICES, CROSSFADE_CHOICES, usePlayer } from '@/state/player';
 import { AppleMusicIntegration, AppleMusicToggles, CanvasToggle, DiscordIntegration, LyricSourcesAccess, SpotifyIntegration, Toggle } from './IntegrationSettings';
 import { settingsUi } from './settingsStyles';
 
@@ -60,13 +60,14 @@ export default function SettingsPage() {
   const discord = useDiscord();
   const party = useParty();
   const autoplay = usePlayer((s) => s.autoplay);
+  const audioQuality = usePlayer((s) => s.audioQuality);
   const crossfadeSec = usePlayer((s) => s.crossfadeSec);
   const automix = usePlayer((s) => s.automix);
   const automixBars = usePlayer((s) => s.automixBars);
   const showNerdStats = usePlayer((s) => s.showNerdStats);
   const shareHistory = useHistorySettings((s) => s.share);
   const setShareHistory = useHistorySettings((s) => s.setShare);
-  const { setAutoplay, setCrossfade, setAutomix, setAutomixBars, setShowNerdStats } = usePlayer.getState();
+  const { setAutoplay, setCrossfade, setAutomix, setAutomixBars, setShowNerdStats, setAudioQuality } = usePlayer.getState();
   const [lyrics, setLyrics] = useState(false);
   const present = extension.state === 'present';
   const discordText =
@@ -164,6 +165,15 @@ export default function SettingsPage() {
             onChange={setAutoplay}
           />
           <label className={settingsUi.controlRow}>
+            <span>Sound Quality</span>
+            <Select
+              label="Sound Quality"
+              value={audioQuality}
+              options={AUDIO_QUALITY_CHOICES.map(({ value, label }) => ({ value, label }))}
+              onChange={setAudioQuality}
+            />
+          </label>
+          <label className={settingsUi.controlRow}>
             <span>Crossfade</span>
             <Select<number | 'automix'>
               label="Crossfade"
@@ -193,6 +203,11 @@ export default function SettingsPage() {
             onChange={setShowNerdStats}
           />
         </section>
+        <p className={settingsUi.footer}>
+          {audioQuality === 'lossless'
+            ? 'YouTube has no lossless stream; Lossless uses the best available audio and will use FLAC/ALAC when a lossless source is added. Applies to the next track.'
+            : 'Low, Medium and High cap the next track’s YouTube audio stream. Lossless falls back to High on YouTube.'}
+        </p>
         {automix && (
           <p className={settingsUi.footer}>
             Automix finds each song’s tempo, key and phrases, then blends on the beat: the next song is time-stretched to match, and
