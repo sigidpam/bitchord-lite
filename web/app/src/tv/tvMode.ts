@@ -280,6 +280,9 @@ function installBackHandling(): void {
 export function installTvMode(): void {
   if (!isTv) return;
   document.documentElement.dataset.tv = '';
+  // The television remote controls the system volume. Keep the page at unity
+  // so a stale desktop volume or mute does not silence the TV.
+  usePlayer.getState().setVolume(1);
   installBackHandling();
   document.addEventListener('focusin', (event) => {
     if (event.target instanceof HTMLElement) reveal(event.target);

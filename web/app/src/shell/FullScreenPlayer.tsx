@@ -25,6 +25,7 @@ import { getPlayhead, usePlayer } from '@/state/player';
 import { trackFromNowPlaying } from '@/state/library';
 import { useUi } from '@/state/ui';
 import { useHasVideo, useVideo } from '@/state/video';
+import { isTv } from '@/tv/tvMode';
 import { Credits, PageLink, pageLink } from './Lcd';
 import { LyricsPanel } from './LyricsPanel';
 import { MeshBackdrop } from './MeshBackdrop';
@@ -429,7 +430,7 @@ export function FullScreenPlayer() {
       >
         {showLyrics ? <LyricsActiveIcon size={18} /> : <LyricsIcon size={18} />}
       </button>
-      {/* Up Next, with the speaker beside it: the level slides in over Up Next, as it does in the pill. */}
+      {/* Up Next, with the speaker beside it on desktop; the TV remote owns volume. */}
       <div
         className={`group/actions absolute right-5 bottom-5 z-1 flex items-center [--volume-gap:36px] transition-opacity duration-300${hidden}`}
         data-volume-open={volumeOpen || undefined}
@@ -446,7 +447,9 @@ export function FullScreenPlayer() {
         >
           <UpNextIcon size={18} />
         </button>
-        <VolumeControl open={volumeOpen} onOpen={() => setVolumeOpen(true)} className={chromeButton} iconSize={18} />
+        {!isTv && (
+          <VolumeControl open={volumeOpen} onOpen={() => setVolumeOpen(true)} className={chromeButton} iconSize={18} />
+        )}
       </div>
     </div>
   );

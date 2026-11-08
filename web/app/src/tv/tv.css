@@ -6,7 +6,8 @@
 html[data-tv] {
   font-size: 20px;
 
-  --web-navigation-width: 300px;
+  /* Tighter than desktop: more room for the page and the player's controls. */
+  --web-navigation-width: 228px;
   --player-pill-height: 72px;
   --player-bottom-offset: 28px;
   --side-panel-width: 360px;
