@@ -108,6 +108,13 @@ struct ProxyQuery {
     url: String,
 }
 
+#[cfg(mobile)]
+#[derive(Debug, Deserialize)]
+struct CookiePair {
+    name: String,
+    value: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct LogEntry {
     level: String,
@@ -205,6 +212,25 @@ async fn handle_bridge(
         "yt.signIn" => {
             yt_auth::open_login(&state.app).map_err(|error| ("internal", error))?;
             Ok(json!({}))
+        }
+        #[cfg(mobile)]
+        "yt.setCookies" => {
+            let cookies: Vec<CookiePair> = serde_json::from_value(
+                params
+                    .get("cookies")
+                    .cloned()
+                    .unwrap_or_else(|| json!([])),
+            )
+            .map_err(|error| ("invalid", error.to_string()))?;
+            yt_auth::set_cookies(
+                &state.auth,
+                cookies
+                    .into_iter()
+                    .map(|cookie| (cookie.name, cookie.value))
+                    .collect(),
+            );
+            let auth = yt_auth::auth_state(&state.app, &state.client, &state.auth, true).await;
+            serde_json::to_value(auth).map_err(|error| ("internal", error.to_string()))
         }
         "yt.fetch" => {
             let params: YtFetchParams =

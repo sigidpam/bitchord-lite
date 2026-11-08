@@ -12,6 +12,7 @@ import {
   type ResultOf,
 } from '@bitchord/shared/bridge';
 import { config } from '@/config';
+import { androidSignIn, isAndroidShell, restoreAndroidCookies } from '@/native/androidAuth';
 
 /**
  * The Tauri build's bridge. It speaks the same envelope as the Chrome
@@ -35,6 +36,12 @@ class NativeBridge implements Bridge {
     params: ParamsOf<M>,
     options?: CallOptions,
   ): Promise<ResultOf<M>> {
+    // Android has no desktop login window; the native screen owns the cookie jar.
+    if (method === 'yt.signIn' && isAndroidShell()) {
+      await androidSignIn();
+      return {} as ResultOf<M>;
+    }
+
     const id = `native-${Date.now().toString(36)}-${(nextId++).toString(36)}`;
     const request = {
       channel: BRIDGE_CHANNEL,
@@ -106,6 +113,14 @@ export async function detectNativeBridge(): Promise<DetectedExtension | null> {
   try {
     const info = await bridge.call('ping', {}, { timeoutMs: 1500 });
     if (info.protocol !== BRIDGE_PROTOCOL) return null;
+    if (isAndroidShell()) {
+      // A previous sign-in survives an app restart; failure means anonymous.
+      try {
+        await restoreAndroidCookies();
+      } catch {
+        /* no saved session */
+      }
+    }
     return { bridge, info };
   } catch {
     return null;

@@ -1,0 +1,47 @@
+/*
+ * Android TV: a 10-foot type step and a focus ring that the remote can see.
+ * Layout tokens stay in px (the design is measured in px); only the rem-based
+ * Tailwind text scale follows the root font size.
+ */
+html[data-tv] {
+  font-size: 20px;
+
+  --web-navigation-width: 300px;
+  --player-pill-height: 72px;
+  --player-bottom-offset: 28px;
+  --side-panel-width: 360px;
+  --body-gutter: 40px;
+
+  --header-emphasized: 700 40px / 48px var(--font-family);
+  --large-title: 400 32px / 38px var(--font-family);
+  --large-title-emphasized: 700 32px / 38px var(--font-family);
+  --title-1-emphasized: 700 26px / 32px var(--font-family);
+  --title-2: 400 20px / 26px var(--font-family);
+  --title-2-emphasized: 700 20px / 26px var(--font-family);
+  --title-3: 400 18px / 24px var(--font-family);
+  --title-3-emphasized: 600 18px / 24px var(--font-family);
+  --body: 400 16px / 20px var(--font-family);
+  --body-emphasized: 600 16px / 20px var(--font-family);
+  --body-tall: 400 16px / 22px var(--font-family);
+  --headline: 700 16px / 20px var(--font-family);
+  --body-reduced: 400 16px / 22px var(--font-family);
+  --callout: 400 14px / 18px var(--font-family);
+  --callout-medium: 500 14px / 18px var(--font-family);
+  --callout-emphasized: 600 14px / 18px var(--font-family);
+  --subhead-emphasized: 600 13px / 17px var(--font-family);
+  --caption-2: 500 12px / 16px var(--font-family);
+  --footnote: 400 13px / 17px var(--font-family);
+}
+
+/* The app removes focus rings for the mouse; a D-pad cannot work without one.
+   White inside and key red outside stays visible on white, dark, and red. */
+html[data-tv] :focus {
+  outline: 3px solid #fff !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--keyColor) !important;
+}
+
+html[data-tv] :is(a, button, input, select, textarea, [tabindex]) {
+  scroll-margin: 96px;
+}
+

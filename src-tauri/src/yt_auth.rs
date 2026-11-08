@@ -5,7 +5,9 @@ use futures_util::future::join_all;
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha1::{Digest, Sha1};
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::AppHandle;
+#[cfg(desktop)]
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
 const MUSIC_ORIGIN: &str = "https://music.youtube.com";
@@ -21,6 +23,7 @@ const SESSION_COOKIES: [&str; 6] = [
     "__Secure-3PSID",
 ];
 const MAX_LOGINS: usize = 10;
+#[cfg(desktop)]
 const SAFARI_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15";
 
 #[derive(Serialize, Clone, Debug)]
@@ -89,6 +92,10 @@ pub struct AuthStore {
     cached: Mutex<Option<Cached>>,
     connected: Mutex<bool>,
     selected: Mutex<Option<String>>,
+    /// Android has no cookie jar API in Rust: the TV login WebView hands the
+    /// music.youtube.com cookies to the page, which posts them here.
+    #[cfg(mobile)]
+    injected: Mutex<Vec<(String, String)>>,
 }
 
 impl Default for AuthStore {
@@ -97,6 +104,8 @@ impl Default for AuthStore {
             cached: Mutex::new(None),
             connected: Mutex::new(true),
             selected: Mutex::new(None),
+            #[cfg(mobile)]
+            injected: Mutex::new(Vec::new()),
         }
     }
 }
@@ -112,7 +121,8 @@ pub struct SignedRequest {
     pub x_origin: String,
 }
 
-fn cookies(app: &AppHandle, url: &str) -> Vec<(String, String)> {
+#[cfg(desktop)]
+fn cookies(app: &AppHandle, _store: &AuthStore, url: &str) -> Vec<(String, String)> {
     let Some(window) = app
         .get_webview_window("main")
         .or_else(|| app.get_webview_window("yt-login"))
@@ -128,6 +138,27 @@ fn cookies(app: &AppHandle, url: &str) -> Vec<(String, String)> {
         .into_iter()
         .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
         .collect()
+}
+
+#[cfg(mobile)]
+fn cookies(_app: &AppHandle, store: &AuthStore, _url: &str) -> Vec<(String, String)> {
+    store
+        .injected
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .clone()
+}
+
+/// The Android login screen posts its cookie jar here after the user signs in.
+#[cfg(mobile)]
+pub fn set_cookies(store: &AuthStore, cookies: Vec<(String, String)>) {
+    *store
+        .injected
+        .lock()
+        .unwrap_or_else(|error| error.into_inner()) = cookies;
+    if let Ok(mut cache) = store.cached.lock() {
+        *cache = None;
+    }
 }
 
 fn cookie_header(cookies: &[(String, String)]) -> String {
@@ -197,7 +228,7 @@ async fn snapshot(
     store: &AuthStore,
     refresh: bool,
 ) -> Snapshot {
-    let cookies = cookies(app, MUSIC_ORIGIN);
+    let cookies = cookies(app, store, MUSIC_ORIGIN);
     let fingerprint = fingerprint(&cookies);
 
     if !refresh {
@@ -300,7 +331,7 @@ pub async fn signed_request(
     let snapshot = snapshot(app, client, store, false).await;
     let identity = snapshot.identity.clone()?;
 
-    let url_cookies = cookies(app, url.as_str());
+    let url_cookies = cookies(app, store, url.as_str());
     let (cookie, secret, auth_user, page_id) = if signing_secret(&url_cookies).is_some() {
         (
             cookie_header(&url_cookies),
@@ -329,6 +360,7 @@ pub async fn signed_request(
 
 /// Opens Google's sign-in in its own webview, then closes it once the YouTube
 /// signing cookie arrives. The page polls `yt.authState` while it is open.
+#[cfg(desktop)]
 pub fn open_login(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("yt-login") {
         let _ = window.set_focus();
@@ -345,6 +377,7 @@ pub fn open_login(app: &AppHandle) -> Result<(), String> {
     rx.recv().map_err(|error| error.to_string())?
 }
 
+#[cfg(desktop)]
 fn build_login(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("yt-login") {
         let _ = window.set_focus();
@@ -389,6 +422,13 @@ fn build_login(app: &AppHandle) -> Result<(), String> {
     });
 
     Ok(())
+}
+
+/// The signed-in WebView on Android is opened by the page through a native
+/// command, so the bridge itself has nothing to build.
+#[cfg(mobile)]
+pub fn open_login(_app: &AppHandle) -> Result<(), String> {
+    Err("Sign-in is handled by the Android login screen".to_string())
 }
 
 async fn discover(
