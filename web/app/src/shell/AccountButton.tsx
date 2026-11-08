@@ -1,8 +1,10 @@
 import { ArrowUpRight, ChevronsUpDown } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Menu, MenuHeader, MenuItem, MenuSeparator } from '@/components/Menu';
 import { config } from '@/config';
 import { useRefreshYtAuth, useSelectChannel, useSetConnected, useYtAuth, useYtSignIn } from '@/extension/useYtAuth';
+import { isTv } from '@/tv/tvMode';
 
 const SIGN_IN_URL = 'https://accounts.google.com/ServiceLogin?service=youtube&continue=https://music.youtube.com/';
 
@@ -30,6 +32,7 @@ function Avatar({ src, name, size }: { src: string | null; name: string; size: n
  * own sign-in; the extension notices the new session and this updates itself.
  */
 export function AccountButton() {
+  const navigate = useNavigate();
   const status = useYtAuth();
   const select = useSelectChannel();
   const connect = useSetConnected();
@@ -42,6 +45,14 @@ export function AccountButton() {
   const { auth } = status;
 
   if (!auth.browserSignedIn) {
+    if (isTv) {
+      // Google blocks the WebView; the TV imports a session from a computer.
+      return (
+        <button className={pill} onClick={() => navigate('/import')}>
+          Sign In
+        </button>
+      );
+    }
     if (config.native) {
       return (
         <button
@@ -118,15 +129,17 @@ export function AccountButton() {
             </div>
           ))}
           <MenuSeparator />
-          <MenuItem
-            onSelect={() => {
-              close();
-              window.open(SIGN_IN_URL.replace('ServiceLogin', 'AddSession'), '_blank', 'noreferrer');
-            }}
-            trailing={<ArrowUpRight size={13} />}
-          >
-            Add Account
-          </MenuItem>
+          {!isTv && (
+            <MenuItem
+              onSelect={() => {
+                close();
+                window.open(SIGN_IN_URL.replace('ServiceLogin', 'AddSession'), '_blank', 'noreferrer');
+              }}
+              trailing={<ArrowUpRight size={13} />}
+            >
+              Add Account
+            </MenuItem>
+          )}
           <MenuItem
             destructive
             onSelect={() => {

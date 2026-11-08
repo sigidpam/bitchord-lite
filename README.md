@@ -100,7 +100,7 @@ BitChord Lite also builds as an Android TV APK for `arm64-v8a` and `armeabi-v7a`
 
 - The same React UI runs in the Android WebView. A TV layer adds D-pad focus movement, a 10-foot type scale, a visible focus ring, and Back handling for the full-screen player and side panels.
 - The Rust bridge is unchanged and listens on `127.0.0.1:47823` inside the app. Android's network security config allows cleartext only to loopback.
-- Google sign-in opens a native login screen with the cookie jar handed to the bridge. If Google refuses the embedded browser, the app still works anonymously.
+- Google blocks its sign-in page inside the Android WebView. Sign in on a computer and import the session with `scripts/import-tv-cookies.sh`; the app keeps it in app-private storage. Anonymous playback works without a session.
 - The APK is signed with the Android debug key because it is sideloaded, not published.
 
 Build requirements: Android SDK with NDK 27 and JDK 17. The generated project lives under `src-tauri/gen/android`; create it once with `corepack pnpm tauri android init` if it is missing.
@@ -117,6 +117,20 @@ scripts/install-android-tv.sh 192.168.1.50
 ```
 
 Accept the debugging prompt on the TV. The release APK is a universal ARM build; the TV picks the ABI it needs. `adb shell getprop ro.product.cpu.abilist` shows the supported ABIs.
+
+### Signing in on the TV
+
+Google refuses its own sign-in page inside the Android WebView. The TV therefore imports a session from a browser on the same network.
+
+1. On a computer, open music.youtube.com and sign in.
+2. Open the browser developer tools (F12), switch to Network, reload, select a request to music.youtube.com, copy the `Cookie` request header, and save it as `cookies.txt`.
+3. With the TV reachable over adb, run:
+
+```bash
+scripts/import-tv-cookies.sh <tv-ip> cookies.txt
+```
+
+The script sends the cookie header through the TV's loopback bridge. The app persists it in app-private storage and restarts signed in. Use a trusted network: the cookie is a full account session.
 
 ## Repository layout
 

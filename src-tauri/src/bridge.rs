@@ -223,6 +223,7 @@ async fn handle_bridge(
             )
             .map_err(|error| ("invalid", error.to_string()))?;
             yt_auth::set_cookies(
+                &state.app,
                 &state.auth,
                 cookies
                     .into_iter()

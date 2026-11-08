@@ -5,9 +5,9 @@ use futures_util::future::join_all;
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha1::{Digest, Sha1};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 #[cfg(desktop)]
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
 const MUSIC_ORIGIN: &str = "https://music.youtube.com";
@@ -140,18 +140,45 @@ fn cookies(app: &AppHandle, _store: &AuthStore, url: &str) -> Vec<(String, Strin
         .collect()
 }
 
+/// The imported session lives in app-private storage so it survives a restart.
 #[cfg(mobile)]
-fn cookies(_app: &AppHandle, store: &AuthStore, _url: &str) -> Vec<(String, String)> {
-    store
-        .injected
-        .lock()
-        .unwrap_or_else(|error| error.into_inner())
-        .clone()
+fn cookie_path(app: &AppHandle) -> Option<std::path::PathBuf> {
+    app.path()
+        .app_data_dir()
+        .ok()
+        .map(|dir| dir.join("yt-cookies.json"))
 }
 
-/// The Android login screen posts its cookie jar here after the user signs in.
 #[cfg(mobile)]
-pub fn set_cookies(store: &AuthStore, cookies: Vec<(String, String)>) {
+fn cookies(app: &AppHandle, store: &AuthStore, _url: &str) -> Vec<(String, String)> {
+    let mut injected = store
+        .injected
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    if injected.is_empty() {
+        if let Some(path) = cookie_path(app) {
+            if let Ok(raw) = std::fs::read_to_string(path) {
+                if let Ok(pairs) = serde_json::from_str::<Vec<(String, String)>>(&raw) {
+                    *injected = pairs;
+                }
+            }
+        }
+    }
+    injected.clone()
+}
+
+/// The TV sign-in script posts the cookie header here; persist it first so the
+/// app is still signed in after its restart.
+#[cfg(mobile)]
+pub fn set_cookies(app: &AppHandle, store: &AuthStore, cookies: Vec<(String, String)>) {
+    if let Some(path) = cookie_path(app) {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Ok(raw) = serde_json::to_vec(&cookies) {
+            let _ = std::fs::write(path, raw);
+        }
+    }
     *store
         .injected
         .lock()
