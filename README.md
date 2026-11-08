@@ -120,17 +120,26 @@ Accept the debugging prompt on the TV. The release APK is a universal ARM build;
 
 ### Signing in on the TV
 
-Google refuses its own sign-in page inside the Android WebView. The TV therefore imports a session from a browser on the same network.
+Google refuses its own sign-in page inside the Android WebView. The TV imports a session exported from Chrome on a computer. Chrome hides cookies from Copy as cURL by default, so export a HAR with sensitive data.
 
-1. On a computer, open music.youtube.com and sign in.
-2. Open the browser developer tools (F12), switch to Network, reload, select a request to music.youtube.com, copy the `Cookie` request header, and save it as `cookies.txt`.
-3. With the TV reachable over adb, run:
+1. On the computer, open music.youtube.com and sign in.
+2. Open the developer tools (F12), then Settings (F1). Under **Preferences > Network**, enable **Allow to generate HAR with sensitive data**.
+3. In the **Network** panel, enable **Disable cache**, reload the page, then export the HAR. Click the download arrow at the top of the panel, or right-click a request and choose **Save all as HAR with content**. Save it as `music.har`.
+4. With the TV reachable over adb, check and import:
 
 ```bash
-scripts/import-tv-cookies.sh <tv-ip> cookies.txt
+scripts/import-tv-cookies.sh --check ~/music.har
+scripts/import-tv-cookies.sh <tv-ip> ~/music.har
+rm ~/music.har
 ```
 
-The script sends the cookie header through the TV's loopback bridge. The app persists it in app-private storage and restarts signed in. Use a trusted network: the cookie is a full account session.
+The check prints the cookie pair count and confirms `SAPISID` is present. The import prints the account name and restarts the TV app.
+
+5. Turn off **Allow to generate HAR with sensitive data** in the developer tools after the export.
+
+The script also accepts a raw `Cookie` request header or Chrome's Copy as cURL dump, but Chrome may redact cookies from both. The HAR route is the reliable one.
+
+The HAR is a full account session. Keep it local, delete it after the import, and use a trusted network. The TV stores the imported cookies in app-private storage.
 
 ## Repository layout
 
