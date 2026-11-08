@@ -2,7 +2,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { useRefreshYtAuth, useYtAuth } from '@/extension/useYtAuth';
 import { isTv } from '@/tv/tvMode';
 
-const command = 'scripts/import-tv-cookies.sh <tv-ip> cookies.txt';
+const command = `scripts/import-tv-cookies.sh --check ~/music.har
+scripts/import-tv-cookies.sh <tv-ip> ~/music.har`;
 
 /**
  * Google refuses its sign-in inside the Android WebView. The TV therefore
@@ -23,8 +24,8 @@ export default function ImportPage() {
         ) : (
           <>
             <p className="type-body text-secondary">
-              Google blocks its sign-in inside the TV app. Sign in on a computer instead, then
-              import that session here.
+              Google blocks its sign-in inside the TV app. Sign in on a computer and export a HAR
+              with sensitive data, then import it here.
             </p>
 
             <ol className="mt-5 list-decimal space-y-3 ps-5 type-body">
@@ -33,14 +34,15 @@ export default function ImportPage() {
                 sign in to the Google account.
               </li>
               <li>
-                Open the browser developer tools (F12), switch to{' '}
-                <span className="font-semibold">Network</span>, reload the page, and select a
-                request to <span className="font-semibold">music.youtube.com</span>.
+                Open the developer tools (F12), then Settings (F1). Under{' '}
+                <span className="font-semibold">Preferences, Network</span>, enable{' '}
+                <span className="font-semibold">Allow to generate HAR with sensitive data</span>.
               </li>
               <li>
-                In <span className="font-semibold">Request Headers</span>, copy the{' '}
-                <span className="font-semibold">Cookie</span> value and save it as{' '}
-                <span className="font-semibold">cookies.txt</span>.
+                In <span className="font-semibold">Network</span>, reload the page, then export the
+                HAR. Click the download arrow, or right-click a request and choose{' '}
+                <span className="font-semibold">Save all as HAR with content</span>. Save it as{' '}
+                <span className="font-semibold">music.har</span>.
               </li>
               <li>
                 From the <span className="font-semibold">bitchord-lite</span> folder on the
@@ -48,12 +50,13 @@ export default function ImportPage() {
               </li>
             </ol>
 
-            <code className="mt-3 block w-full overflow-x-auto rounded-[8px] bg-quinary px-4 py-3 type-[500_14px/22px] text-primary">
+            <code className="mt-3 block w-full overflow-x-auto whitespace-pre-wrap rounded-[8px] bg-quinary px-4 py-3 type-[500_14px/22px] text-primary">
               {command}
             </code>
 
             <p className="mt-4 type-callout text-tertiary">
-              The TV needs its IP from Settings, Network. The TV app restarts signed in.
+              The TV needs its IP from Settings, Network. The TV app restarts signed in. Delete
+              music.har and turn the setting off after the import.
             </p>
 
             <div className="mt-6 flex items-center gap-4">
