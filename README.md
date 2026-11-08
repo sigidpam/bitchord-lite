@@ -94,6 +94,30 @@ Not in this build yet: in-app source picker, local files, Spotify playback, lyri
 
 Existing YouTube liked songs and playlists are not imported into the device library; signed-in users browse them in the YouTube Library sections.
 
+## Android TV
+
+BitChord Lite also builds as an Android TV APK for `arm64-v8a` and `armeabi-v7a`.
+
+- The same React UI runs in the Android WebView. A TV layer adds D-pad focus movement, a 10-foot type scale, a visible focus ring, and Back handling for the full-screen player and side panels.
+- The Rust bridge is unchanged and listens on `127.0.0.1:47823` inside the app. Android's network security config allows cleartext only to loopback.
+- Google sign-in opens a native login screen with the cookie jar handed to the bridge. If Google refuses the embedded browser, the app still works anonymously.
+- The APK is signed with the Android debug key because it is sideloaded, not published.
+
+Build requirements: Android SDK with NDK 27 and JDK 17. The generated project lives under `src-tauri/gen/android`; create it once with `corepack pnpm tauri android init` if it is missing.
+
+```bash
+corepack pnpm --dir web install   # once
+scripts/build-android-tv.sh       # writes dist/BitChord Lite_<version>_android-tv.apk
+```
+
+Install on a TV on the same Wi-Fi, with Developer options and USB or network debugging enabled:
+
+```bash
+scripts/install-android-tv.sh 192.168.1.50
+```
+
+Accept the debugging prompt on the TV. The release APK is a universal ARM build; the TV picks the ABI it needs. `adb shell getprop ro.product.cpu.abilist` shows the supported ABIs.
+
 ## Repository layout
 
 ```text

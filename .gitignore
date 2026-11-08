@@ -3,6 +3,7 @@ dist/
 .env
 .env.*
 src-tauri/target/
+src-tauri/gen/schemas/
 web/extension/.output/
 .DS_Store
 *.log

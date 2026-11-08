@@ -1,5 +1,5 @@
 import { Maximize, Minimize, X } from 'lucide-react';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router';
 import {
   BackwardIcon,
@@ -21,10 +21,11 @@ import { MotionArtwork } from '@/components/music/MotionArtwork';
 import { VideoSurface } from '@/components/music/VideoSurface';
 import { useTrackMotion } from '@/data/apple/motionArt';
 import { sizedArtwork } from '@/lib/artwork';
-import { usePlayer } from '@/state/player';
+import { getPlayhead, usePlayer } from '@/state/player';
 import { trackFromNowPlaying } from '@/state/library';
 import { useUi } from '@/state/ui';
 import { useHasVideo, useVideo } from '@/state/video';
+import { isTv } from '@/tv/tvMode';
 import { Credits, PageLink, pageLink } from './Lcd';
 import { LyricsPanel } from './LyricsPanel';
 import { MeshBackdrop } from './MeshBackdrop';
@@ -48,10 +49,38 @@ function useBrowserFullScreen(): boolean {
 /** The seek line under the track's names: thicker on hover, with the times beneath its ends. */
 function Scrubber() {
   const { bar, elapsed, remaining, mixLabel, dragging, handlers } = useScrubber();
+  const duration = usePlayer((s) => s.nowPlaying?.durationSec ?? 0);
+  const seek = usePlayer((s) => s.seek);
+  const [value, setValue] = useState(0);
+
+  // A remote has no pointer: the focused line seeks with Left and Right.
+  const onKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    event.stopPropagation();
+    const current = getPlayhead()?.sec ?? 0;
+    const next = Math.max(
+      0,
+      Math.min(duration || current + 5, current + (event.key === 'ArrowRight' ? 5 : -5)),
+    );
+    setValue(next);
+    seek(next);
+  };
+
   return (
     <div className="group/scrub mt-3.5" data-dragging={dragging || undefined}>
       {/* A taller hit area than the line it carries. */}
-      <div className="group/hit flex h-4 cursor-pointer touch-none items-center" {...handlers}>
+      <div
+        className="group/hit flex h-4 cursor-pointer touch-none items-center"
+        role="slider"
+        tabIndex={0}
+        aria-label="Seek"
+        aria-valuemin={0}
+        aria-valuemax={Math.round(duration)}
+        aria-valuenow={Math.round(value)}
+        onKeyDown={onKeyDown}
+        {...handlers}
+      >
         <div
           className="relative h-1 flex-1 overflow-hidden rounded-[999px] bg-quaternary transition-[height] duration-120 ease-in group-hover/hit:h-2 group-data-dragging/scrub:h-2"
           aria-hidden="true"
@@ -401,7 +430,7 @@ export function FullScreenPlayer() {
       >
         {showLyrics ? <LyricsActiveIcon size={18} /> : <LyricsIcon size={18} />}
       </button>
-      {/* Up Next, with the speaker beside it: the level slides in over Up Next, as it does in the pill. */}
+      {/* Up Next, with the speaker beside it on desktop; the TV remote owns volume. */}
       <div
         className={`group/actions absolute right-5 bottom-5 z-1 flex items-center [--volume-gap:36px] transition-opacity duration-300${hidden}`}
         data-volume-open={volumeOpen || undefined}
@@ -418,7 +447,9 @@ export function FullScreenPlayer() {
         >
           <UpNextIcon size={18} />
         </button>
-        <VolumeControl open={volumeOpen} onOpen={() => setVolumeOpen(true)} className={chromeButton} iconSize={18} />
+        {!isTv && (
+          <VolumeControl open={volumeOpen} onOpen={() => setVolumeOpen(true)} className={chromeButton} iconSize={18} />
+        )}
       </div>
     </div>
   );

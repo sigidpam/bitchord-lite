@@ -56,7 +56,7 @@ export function AppShell() {
         }
       />
     );
-  } else if (extension.state === 'missing' && !bannerDismissed) {
+  } else if (!config.native && extension.state === 'missing' && !bannerDismissed) {
     banner = (
       <Banner
         title="Play YouTube Music with the BitChord extension."

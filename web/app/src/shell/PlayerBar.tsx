@@ -16,6 +16,7 @@ import { TrackMenu } from '@/components/music/TrackMenu';
 import { trackFromNowPlaying } from '@/state/library';
 import { usePlayer } from '@/state/player';
 import { useUi } from '@/state/ui';
+import { isTv } from '@/tv/tvMode';
 import { Lcd } from './Lcd';
 import { fadeForVolume, VolumeControl } from './VolumeControl';
 
@@ -108,7 +109,8 @@ export function PlayerBar() {
           >
             <UpNextIcon size={18} />
           </button>
-          <VolumeControl open={volumeOpen} onOpen={() => setVolumeOpen(true)} className={action} />
+          {/* The TV remote owns the volume; an app-level slider is an easy mis-click. */}
+          {!isTv && <VolumeControl open={volumeOpen} onOpen={() => setVolumeOpen(true)} className={action} />}
         </div>
       </div>
     </div>
